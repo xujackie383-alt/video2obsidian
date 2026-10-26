@@ -1,75 +1,78 @@
+<div align="center">
+
 # video2obsidian
 
-把一条视频分享链接，自动变成一篇结构化的 Obsidian 笔记。
+**把一条视频链接，变成一篇可以放进知识库的 Obsidian 笔记。**
 
-下载音频 → 本地离线转录 → DeepSeek 深度重构 → 按模板写入知识库 → 清理临时文件，全流程一条命令完成。
+本地转写 · AI 深度重构 · 免登录解析 · 一键落库
 
-支持抖音、B站、YouTube、微博等所有 `yt-dlp` 能解析的平台——链接提取不再限定域名，分享文案里只要含有合法的 HTTP/HTTPS 地址即可。
+![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB)
+![License](https://img.shields.io/badge/License-MIT-green)
+![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)
+
+</div>
 
 > 仅用于个人学习与内容整理。请遵守平台规则与著作权法，不要用于批量抓取或二次分发他人作品。
 
 ---
 
-## 功能特点
+## 核心特性
 
-- **一条链接搞定**：直接粘贴分享文案（带一堆表情和口令的那种也行），自动提取其中的第一个 URL。
-- **不挑平台**：抖音、B站、YouTube、微博等主流视频平台原生支持；`v.douyin.com`、`b23.tv`、`youtu.be` 等短链也无需手动展开。
-- **本地转录，音频不出本机**：使用 `faster-whisper` 离线识别，支持 CPU / GPU 自动判断。
-- **AI 深度重构，不是机械摘要**：交给 DeepSeek 消化整篇内容后重写为连贯解读，而不是「观点 / 论据 / 金句」的模板填空。
-- **长视频自动分段**：转录文本超过阈值时，先分段提炼要点，再整体整合成一篇。
-- **Obsidian 原生格式**：无 YAML frontmatter、无 tags，标题 + 元数据行 + 正文 + 可折叠逐字稿。
-- **失败可回溯**：中途出错会保留临时音频并打印路径；成功后才清理。
-- **配置全走 `.env`**：API Key、知识库路径、模型选择都不进代码仓库。
+- **一键流水线**：粘贴视频链接或整段分享文案，下载 → 转写 → 重构 → 落库 → 清理，一条命令全部完成。
+- **本地离线转写**：使用 `faster-whisper` 在本机识别语音，音频文件不上传；支持 CPU / CUDA 自动选择。
+- **AI 深度重构**：交给 DeepSeek 通读全文后重写为连贯解读，而不是「观点 / 论据 / 金句」的模板化摘要；长视频自动分段提炼再整合。
+- **免登录解析**：抖音短链自动跟随重定向拿到真实 `video_id`，通过公开解析接口获取无水印直链，不需要 Cookie 或账号登录。
+- **Obsidian 直连**：按固定模板生成 Markdown 并直接写入知识库根目录，无需手动搬运。
+- **多平台支持**：抖音、B站、YouTube、微博等 `yt-dlp` 可解析的平台；`v.douyin.com`、`b23.tv`、`youtu.be` 等短链无需手动展开。
+- **失败可回溯**：中途出错会保留临时音频并打印路径；只有成功后才清理。
+
+## 支持平台
+
+| 平台 | 下载方式 | 登录 / Cookie |
+| --- | --- | --- |
+| 抖音 | 公开解析接口取无水印直链 | 不需要 |
+| B站、YouTube、微博等 | `yt-dlp` 原生解析 | 不需要（会员 / 年龄限制内容暂不支持） |
+
+> 链接提取不限定域名：分享文案里只要含有合法的 `http://` 或 `https://` 地址，就会取第一个交给后续流程。
 
 ---
 
-## 工作流程
+## 快速上手
 
-```text
-视频分享链接（抖音 / B站 / YouTube / 微博 …）
-      │
-      ▼
-① 从输入文本中提取第一个 HTTP/HTTPS 链接
-   （抖音短链自动跟随重定向，拿到真实 video_id）
-      │
-      ▼
-② 抖音：公开解析接口取无水印直链 → requests 流式下载
-   其他平台：yt-dlp 以最佳音质下载
-   → 抖音视频用 ffmpeg 提取音频 → temp/
-      │
-      ▼
-③ faster-whisper 离线转录为中文文本
-      │
-      ▼
-④ DeepSeek (deepseek-chat) 深度理解并重构正文
-      │
-      ▼
-⑤ 生成 Markdown 写入 Obsidian 知识库 → 清理 temp/
+### 1. 克隆项目并准备 Python 环境
+
+需要 **Python 3.10 及以上**（开发与测试环境为 3.12）。
+
+```bash
+git clone https://github.com/<your-name>/video2obsidian.git
+cd video2obsidian
+
+python -m venv .venv
 ```
 
----
+激活虚拟环境：
 
-## 环境依赖
+```powershell
+# Windows PowerShell
+.venv\Scripts\Activate.ps1
+```
 
-### 1. Python
+```bash
+# macOS / Linux
+source .venv/bin/activate
+```
 
-- Python **3.10 及以上**（开发与测试环境为 3.12）。
+### 2. 安装 FFmpeg
 
-### 2. ffmpeg（必需）
+FFmpeg 用于处理音频流，以及从抖音视频中提取音轨。
 
-`yt-dlp` 需要 ffmpeg 处理音频流。没有它，部分视频的音频会下载失败或无法转封装。
-
-**Windows**
-
-任选一种：
+**Windows（winget）**
 
 ```powershell
 winget install --id Gyan.FFmpeg -e
 ```
 
-或到 [gyan.dev](https://www.gyan.dev/ffmpeg/builds/) 下载 release 压缩包，解压后把 `bin` 目录加入系统 `PATH`。
-
-**macOS**
+**macOS（Homebrew）**
 
 ```bash
 brew install ffmpeg
@@ -82,82 +85,59 @@ sudo apt install ffmpeg      # Debian / Ubuntu
 sudo dnf install ffmpeg      # Fedora
 ```
 
-安装后验证：
+安装后重新打开终端，确认可用：
 
 ```bash
 ffmpeg -version
 ```
 
-> 脚本启动时若检测不到 ffmpeg 会给出黄色提示，但不会直接中断——只是下载失败的概率会变高。
-
-### 3. Python 依赖
+### 3. 安装 Python 依赖
 
 ```bash
+python -m pip install -U pip
 pip install -r requirements.txt
 ```
 
-| 包 | 作用 |
+| 依赖 | 作用 |
 | --- | --- |
-| `yt-dlp` | 解析多平台视频链接并下载音频 |
-| `faster-whisper` | 本地离线语音转录 |
+| `yt-dlp` | 解析 B站 / YouTube 等平台的视频链接并下载音频 |
+| `faster-whisper` | 本地离线语音转写 |
 | `openai` | 以 OpenAI 兼容协议调用 DeepSeek |
 | `python-dotenv` | 加载 `.env` 配置 |
 | `rich` | 终端进度条与格式化输出 |
-| `requests` | 抖音短链重定向解析 |
+| `requests` | 抖音短链重定向与直链流式下载 |
 
-> 首次运行会自动下载 Whisper 模型（`base` 模型约 140 MB），之后走本地缓存。
+### 4. 配置 `.env`
 
----
+复制示例配置：
 
-## 配置
-
-复制示例配置并填写：
-
-```bash
+```powershell
 # Windows
 copy .env.example .env
+```
 
+```bash
 # macOS / Linux
 cp .env.example .env
 ```
 
-`.env` 中最少需要改这两项：
+打开 `.env`，至少填写下面两项：
 
 ```dotenv
-DEEPSEEK_API_KEY=sk-你的真实key
+DEEPSEEK_API_KEY=sk-你的DeepSeek密钥
 OBSIDIAN_VAULT_PATH=D:/Obsidian/MyVault
 ```
 
-### 配置项说明
+- `DEEPSEEK_API_KEY`：在 [DeepSeek 开放平台](https://platform.deepseek.com/api_keys) 创建。
+- `OBSIDIAN_VAULT_PATH`：Obsidian 知识库的**绝对路径**，目录必须已存在；笔记会直接写入该目录。
 
-| 变量 | 默认值 | 说明 |
-| --- | --- | --- |
-| `DEEPSEEK_API_KEY` | 无（必填） | 在 [DeepSeek 开放平台](https://platform.deepseek.com/api_keys) 创建 |
-| `DEEPSEEK_BASE_URL` | `https://api.deepseek.com` | 兼容网关可改 |
-| `DEEPSEEK_MODEL` | `deepseek-chat` | 整理模型 |
-| `DEEPSEEK_TIMEOUT` | `180` | 单次请求超时（秒） |
-| `OBSIDIAN_VAULT_PATH` | 无（必填） | 知识库**绝对路径**，笔记直接写入该目录 |
-| `WHISPER_MODEL` | `base` | `tiny` / `base` / `small` / `medium` / `large-v3` |
-| `WHISPER_DEVICE` | `auto` | `auto` / `cpu` / `cuda` |
-| `WHISPER_COMPUTE_TYPE` | `auto` | `auto` 时 GPU 用 `float16`、CPU 用 `int8` |
-| `WHISPER_LANGUAGE` | `zh` | `auto` 为自动检测语言 |
-| `WHISPER_DOWNLOAD_ROOT` | 空 | 模型缓存目录，空则用 HuggingFace 默认缓存 |
-| `YTDLP_PROXY` | 空 | 如 `http://127.0.0.1:7890` |
-| `TEMP_DIR` | `temp` | 临时音频目录，相对路径以项目根目录为基准 |
-| `SUMMARY_MAX_INPUT_CHARS` | `12000` | 转录超过该长度时分段提炼 |
+> `.env` 已被 `.gitignore` 忽略，不会进入版本库。
 
-> `.env` 已被 `.gitignore` 忽略，不会被误提交。
+### 5. 运行
 
----
-
-## 使用
-
-### 直接传参
+**常规视频 URL**
 
 ```bash
-# 抖音
-python main.py "https://v.douyin.com/xxxxxxx/"
-
 # B站
 python main.py "https://www.bilibili.com/video/BVxxxxxxxxxx"
 
@@ -165,17 +145,15 @@ python main.py "https://www.bilibili.com/video/BVxxxxxxxxxx"
 python main.py "https://www.youtube.com/watch?v=xxxxxxxxxxx"
 ```
 
-### 粘贴完整分享文案
+**抖音分享文案（长文本）**
 
-分享文案里夹带的文字、表情、口令都不用处理：
+直接把 App 里复制的内容整段粘贴进来，表情、口令和多余文字都不用清理：
 
 ```bash
-python main.py "7.89 复制打开抖音，看看【某某的作品】...# 话题 https://v.douyin.com/xxxxxxx/"
+python main.py "7.89 复制打开抖音，看看【某某的作品】为什么学历越来越高…#工作 #学历 https://v.douyin.com/xxxxxxx/"
 ```
 
-Windows 下建议用双引号包裹，避免 `&` 等字符被 shell 解释。
-
-### 交互输入
+**交互式输入**
 
 不带参数运行，按提示粘贴链接后回车：
 
@@ -183,7 +161,45 @@ Windows 下建议用双引号包裹，避免 `&` 等字符被 shell 解释。
 python main.py
 ```
 
-### 命令行选项
+Windows 下建议用双引号包裹参数，避免 `&` 等字符被 shell 解释。
+
+---
+
+## 工作流原理
+
+```text
+视频分享链接（抖音 / B站 / YouTube / 微博 …）
+        │
+        ▼
+① 从输入文本中提取第一个 HTTP/HTTPS 链接
+   （抖音短链自动跟随 302，拿到真实 video_id）
+        │
+        ▼
+② 获取媒体
+   抖音：公开解析接口 → 无水印直链 → requests 流式下载
+   其他：yt-dlp 以最佳音质下载
+   └─→ ffmpeg 提取 16 kHz 单声道音频 → temp/
+        │
+        ▼
+③ faster-whisper 本地离线转写
+        │
+        ▼
+④ DeepSeek 深度理解并重构正文
+   （超过阈值时先分段提炼，再整体整合）
+        │
+        ▼
+⑤ 生成 Markdown 写入 Obsidian 知识库 → 清理 temp/
+```
+
+1. **链接提取**：用正则从任意文本中取第一个合法 URL，并去掉末尾的中英文标点；抖音的 `modal_id` 链接会规范化为 `/video/<id>`。
+2. **媒体下载**：抖音分支先跟随短链重定向，再依次请求公开解析接口（主接口失败时自动切换备用接口），拿到无水印直链后用 `requests` 流式下载，最后用 FFmpeg 提取音频；其他平台直接交给 `yt-dlp`。
+3. **语音转写**：`faster-whisper` 通过 VAD 过滤静音段，按 `WHISPER_LANGUAGE` 指定的语言输出带标点文本。
+4. **AI 重构**：DeepSeek 消化整篇内容后重写为连贯解读；转录长度超过 `SUMMARY_MAX_INPUT_CHARS` 时，先分段提炼要点，再整合成一篇。
+5. **写入知识库**：按模板生成 Markdown，文件名取自提炼出的主题标题；同名文件自动追加 `(2)`、`(3)`，不会覆盖旧笔记。
+
+---
+
+## 命令行选项
 
 | 选项 | 说明 |
 | --- | --- |
@@ -191,7 +207,7 @@ python main.py
 | `--verbose` | 出错时打印完整堆栈 |
 | `--version` | 显示版本号 |
 
-运行过程中的输出形如：
+运行时会依次显示 5 个阶段，完成后打印笔记的完整保存路径：
 
 ```text
 1/5  解析链接
@@ -201,13 +217,31 @@ python main.py
 5/5  写入 Obsidian
 ```
 
-完成后会打印笔记的完整保存路径。
+---
+
+## 配置项
+
+| 变量 | 默认值 | 说明 |
+| --- | --- | --- |
+| `DEEPSEEK_API_KEY` | 无（必填） | DeepSeek API Key |
+| `DEEPSEEK_BASE_URL` | `https://api.deepseek.com` | 兼容网关可修改 |
+| `DEEPSEEK_MODEL` | `deepseek-chat` | 内容整理模型 |
+| `DEEPSEEK_TIMEOUT` | `180` | 单次请求超时（秒） |
+| `OBSIDIAN_VAULT_PATH` | 无（必填） | 知识库绝对路径，笔记直接写入该目录 |
+| `WHISPER_MODEL` | `base` | `tiny` / `base` / `small` / `medium` / `large-v3` |
+| `WHISPER_DEVICE` | `auto` | `auto` / `cpu` / `cuda` |
+| `WHISPER_COMPUTE_TYPE` | `auto` | `auto` 时 GPU 用 `float16`、CPU 用 `int8` |
+| `WHISPER_LANGUAGE` | `zh` | `auto` 为自动检测语言 |
+| `WHISPER_DOWNLOAD_ROOT` | 空 | 模型缓存目录，空则使用 HuggingFace 默认缓存 |
+| `YTDLP_PROXY` | 空 | 代理地址，如 `http://127.0.0.1:7890` |
+| `TEMP_DIR` | `temp` | 临时音频目录，相对路径以项目根目录为基准 |
+| `SUMMARY_MAX_INPUT_CHARS` | `12000` | 转录超过该长度时分段提炼 |
 
 ---
 
-## 生成的笔记长什么样
+## 生成的笔记
 
-文件名取自提炼出的主题标题；同名文件已存在时自动追加 `(2)`、`(3)`，不会覆盖旧笔记。
+文件名取自 AI 提炼出的主题标题；同名文件已存在时自动追加序号，不会覆盖旧内容。
 
 ```markdown
 # 为什么大多数人做副业都失败了
@@ -228,12 +262,12 @@ python main.py
 > （完整转写文本，方便人工对照与修改）
 ```
 
-要点：
+模板约定：
 
-- **没有 YAML frontmatter，没有 tags**，标题直接是一级标题；
-- 标题下的元数据行固定为 `> 原视频：[标题](链接) | 记录时间：YYYY-MM-DD HH:mm`；
+- 没有 YAML frontmatter，也没有 tags，标题直接是一级标题；
+- 元数据行固定为 `> 原视频：[标题](链接) | 记录时间：YYYY-MM-DD HH:mm`；
 - 正文是 AI 消化后的连贯解读，重要洞见用 `> [!tip]` / `> [!important]` / `> [!quote]` 高亮（全文不超过 3 处）；
-- 末尾 `## 原始逐字稿` 用折叠 Callout 收纳完整转录稿。
+- 末尾用折叠 Callout 收纳完整逐字稿。
 
 ---
 
@@ -246,7 +280,7 @@ video2obsidian/
 ├─ core/
 │  ├─ __init__.py          统一异常体系
 │  ├─ downloader.py        链接提取、抖音直链解析、音频下载与提取
-│  ├─ transcriber.py       faster-whisper 封装（设备/精度自动选择）
+│  ├─ transcriber.py       faster-whisper 封装（设备 / 精度自动选择）
 │  ├─ summarizer.py        DeepSeek 调用、分段提炼、结果解析与清洗
 │  └─ vault_writer.py      Markdown 模板生成与知识库写入
 ├─ .env.example            配置示例
@@ -258,6 +292,18 @@ video2obsidian/
 
 ---
 
+## 注意事项
+
+- **首次运行会下载 Whisper 权重**：`base` 模型约 140 MB，之后从本地缓存加载；`medium`、`large-v3` 体积更大。若访问 HuggingFace 缓慢，可通过 `HF_ENDPOINT` 指向可用镜像，或用 `WHISPER_DOWNLOAD_ROOT` 指定缓存目录。
+- **抖音依赖第三方公开解析接口**：项目本身不实现抖音签名或登录逻辑，而是请求公开解析服务获取无水印直链（内置主备接口自动切换）。这些服务的可用性、限流和返回格式不受本项目控制；分享链接会发送给对应服务，介意的话请改用其他平台链接或自行部署解析服务。
+- **FFmpeg 建议安装**：缺少 FFmpeg 时，抖音分支会退化为直接使用视频文件转写，`yt-dlp` 对部分格式也可能下载失败。
+- **PyAV 版本已固定**：`requirements.txt` 中约束 `av>=14,<19`。PyAV 19 移除了 `metadata_errors` 参数，而当前 `faster-whisper` 仍会传入，升级会导致转录启动失败。
+- **语音数据本地处理，文本会发往 DeepSeek**：音频转写在本机完成；转写文本会发送给 DeepSeek 用于生成笔记，请留意内容隐私。
+- **CUDA 需要完整运行库**：`WHISPER_DEVICE=auto` 检测到 NVIDIA 显卡后会尝试 CUDA；若缺少 cuBLAS / cuDNN，会出现 `cublas64_12.dll` 相关错误，此时设置 `WHISPER_DEVICE=cpu`，或安装 CUDA 12 运行库。
+- **笔记写入知识库根目录**：不会创建额外子目录；临时音频在成功时自动清理，失败或中断时保留并打印路径。
+
+---
+
 ## 常见问题
 
 **下载失败，提示需要登录或返回空信息**
@@ -266,7 +312,7 @@ video2obsidian/
 
 **短链解析超时**
 
-抖音短链解析失败时，脚本会自动把原始链接直接交给解析接口。若是普遍网络问题，设置 `YTDLP_PROXY` 后重试。
+抖音短链解析失败时，脚本会自动把原始链接交给解析接口。若属于普遍网络问题，可设置 `YTDLP_PROXY` 后重试。
 
 **输入里没有可识别的链接**
 
@@ -274,15 +320,11 @@ video2obsidian/
 
 **ffmpeg 找不到**
 
-确认 `ffmpeg -version` 在**新开的终端**里能执行（安装后需要重开终端让 `PATH` 生效）。
+确认 `ffmpeg -version` 能在**新开的终端**里执行（安装后需要重开终端让 `PATH` 生效）。
 
 **转录很慢**
 
-`base` 模型在 CPU 上处理 10 分钟音频通常需要 1–3 分钟。追求速度可换 `WHISPER_MODEL=small` + GPU；追求准确用 `medium` 或 `large-v3`。
-
-**CUDA 初始化失败**
-
-脚本会自动回退到 CPU 并给出提示。若想彻底避开，可在 `.env` 中固定 `WHISPER_DEVICE=cpu`。
+`base` 模型在 CPU 上处理 10 分钟音频通常需要 1–3 分钟。追求速度可换 `WHISPER_MODEL=small` 并启用 GPU；追求准确度可用 `medium` 或 `large-v3`。
 
 **没有识别到有效语音**
 
@@ -290,15 +332,11 @@ video2obsidian/
 
 **知识库路径报错**
 
-`OBSIDIAN_VAULT_PATH` 必须是已存在的**绝对路径**，脚本会校验目录是否存在。
-
-**笔记会放在库里的哪个目录**
-
-直接放在 `OBSIDIAN_VAULT_PATH` 指向的知识库根目录下，不会额外创建子目录。
+`OBSIDIAN_VAULT_PATH` 必须是已存在的**绝对路径**，脚本启动时会校验目录是否存在。
 
 **临时音频去哪了**
 
-成功时自动删除；失败或中断时会保留并在终端打印路径，方便排查。加 `--keep-audio` 可强制保留。
+成功时自动删除；失败或中断时保留并在终端打印路径。加 `--keep-audio` 可强制保留。
 
 ---
 
@@ -316,4 +354,6 @@ video2obsidian/
 
 ## License
 
-[MIT](LICENSE)
+本项目基于 [MIT License](LICENSE) 开源。
+
+Copyright (c) 2026 video2obsidian contributors
