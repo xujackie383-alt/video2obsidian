@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from config import Settings
 from core import SummaryError
 
-SYSTEM_PROMPT = """你是一位擅长深度阅读与知识重构的中文内容编辑。用户会给你一段抖音视频的语音转录稿，你的任务不是复述，而是把作者讲过的东西真正消化之后，重写成一篇可以直接放进个人知识库的解读笔记。
+SYSTEM_PROMPT = """你是一位擅长深度阅读与知识重构的中文内容编辑。用户会给你一段视频的语音转录稿，你的任务不是复述，而是把作者讲过的东西真正消化之后，重写成一篇可以直接放进个人知识库的解读笔记。
 
 写作要求：
 1. 先通读并理解作者的核心洞察、论证脉络、前提假设与言外之意，再决定这篇笔记的骨架。
@@ -250,4 +250,4 @@ def _clean_video_title(title: str) -> str:
     title = re.sub(r"#\S+", "", title or "")
     title = re.sub(r"@\S+", "", title)
     title = re.sub(r"\s+", " ", title).strip(" -_|、,，")
-    return title[:60].strip() or "抖音视频"
+    return title[:60].strip() or "视频"

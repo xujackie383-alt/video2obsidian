@@ -96,7 +96,6 @@ class Settings:
     whisper_language: str
     whisper_download_root: Path | None
     temp_dir: Path
-    ytdlp_cookies_file: Path | None
     ytdlp_proxy: str | None
     summary_max_input_chars: int
 
@@ -138,10 +137,6 @@ class Settings:
                 f"{', '.join(sorted(SUPPORTED_COMPUTE_TYPES))}"
             )
 
-        cookies_file = _optional_path("YTDLP_COOKIES_FILE")
-        if cookies_file is not None and not cookies_file.is_file():
-            raise ConfigError(f"YTDLP_COOKIES_FILE 指向的文件不存在：{cookies_file}")
-
         return cls(
             deepseek_api_key=api_key,
             deepseek_base_url=base_url,
@@ -154,7 +149,6 @@ class Settings:
             whisper_language=_get("WHISPER_LANGUAGE") or "zh",
             whisper_download_root=_optional_path("WHISPER_DOWNLOAD_ROOT"),
             temp_dir=_optional_path("TEMP_DIR") or (PROJECT_ROOT / "temp"),
-            ytdlp_cookies_file=cookies_file,
             ytdlp_proxy=_get("YTDLP_PROXY"),
             summary_max_input_chars=_parse_int(
                 "SUMMARY_MAX_INPUT_CHARS", 12000, minimum=2000

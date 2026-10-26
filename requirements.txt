@@ -1,5 +1,7 @@
 yt-dlp>=2024.10.7
 faster-whisper>=1.1.0
+# PyAV 19 移除了 metadata_errors，faster-whisper 1.2.x 仍会传该参数
+av>=14,<19
 openai>=1.40.0
 python-dotenv>=1.0.1
 rich>=13.7.0

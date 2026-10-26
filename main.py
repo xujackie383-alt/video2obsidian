@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""douyin2obsidian：把抖音视频语音转成结构化 Obsidian 笔记。"""
+"""video2obsidian：把视频语音转成结构化 Obsidian 笔记。"""
 
 from __future__ import annotations
 
@@ -13,28 +13,33 @@ from rich.panel import Panel
 from rich.prompt import Prompt
 
 from config import ConfigError, Settings
-from core import D2OError
-from core.downloader import download_audio, extract_douyin_url
+from core import V2OError
+from core.downloader import download_audio, extract_url
 from core.summarizer import Summarizer
 from core.transcriber import transcribe
 from core.vault_writer import write_note
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="douyin2obsidian",
-        description="下载抖音视频音频，离线转录并用 DeepSeek 重构为 Obsidian 笔记。",
+        prog="video2obsidian",
+        description="从视频分享链接下载音频，离线转录并用 DeepSeek 重构为 Obsidian 笔记。",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "示例：\n"
-            '  python main.py "https://v.douyin.com/xxxx/"\n'
+            '  python main.py "https://www.bilibili.com/video/BVxxxxxxxxxx"\n'
+            '  python main.py "https://www.youtube.com/watch?v=xxxxxxxxxxx"\n'
             '  python main.py "7.89 复制打开抖音... https://v.douyin.com/xxxx/" --keep-audio\n'
             "  python main.py          # 回车后粘贴分享链接\n"
         ),
     )
-    parser.add_argument("url", nargs="*", help="抖音分享链接或完整分享文案")
+    parser.add_argument(
+        "url",
+        nargs="*",
+        help="视频分享链接或完整分享文案（抖音 / B站 / YouTube / 微博等）",
+    )
     parser.add_argument(
         "--keep-audio", action="store_true", help="成功后保留 temp/ 中的音频文件"
     )
@@ -60,7 +65,7 @@ def main(argv: list[str] | None = None) -> int:
     console.print()
     console.print(
         Panel.fit(
-            f"[bold]douyin2obsidian[/] v{__version__}\n"
+            f"[bold]video2obsidian[/] v{__version__}\n"
             f"语音模型：{escape(settings.whisper_model)}"
             f"（{escape(settings.whisper_device)}）\n"
             f"整理模型：{escape(settings.deepseek_model)}\n"
@@ -74,7 +79,7 @@ def main(argv: list[str] | None = None) -> int:
             raw_input = " ".join(args.url).strip()
         else:
             raw_input = Prompt.ask(
-                "[bold]请粘贴抖音分享链接或分享文案[/]", console=console
+                "[bold]请粘贴视频分享链接或分享文案[/]", console=console
             ).strip()
     except (KeyboardInterrupt, EOFError):
         console.print("\n[yellow]已取消。[/]")
@@ -105,7 +110,7 @@ def _run(
 
     try:
         console.rule("[bold cyan]1/5  解析链接[/]", align="left")
-        link = extract_douyin_url(raw_input)
+        link = extract_url(raw_input)
         console.print(f"识别到链接：[cyan]{escape(link)}[/]")
 
         console.rule("[bold cyan]2/5  下载音频[/]", align="left")
@@ -162,7 +167,7 @@ def _run(
         )
         return 0
 
-    except (ConfigError, D2OError) as exc:
+    except (ConfigError, V2OError) as exc:
         console.print(f"\n[bold red]执行失败：[/]{escape(str(exc))}")
         _report_retained_audio(console, audio_path)
         return 1

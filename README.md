@@ -1,8 +1,10 @@
-# douyin2obsidian
+# video2obsidian
 
-把一条抖音分享链接，自动变成一篇结构化的 Obsidian 笔记。
+把一条视频分享链接，自动变成一篇结构化的 Obsidian 笔记。
 
 下载音频 → 本地离线转录 → DeepSeek 深度重构 → 按模板写入知识库 → 清理临时文件，全流程一条命令完成。
+
+支持抖音、B站、YouTube、微博等所有 `yt-dlp` 能解析的平台——链接提取不再限定域名，分享文案里只要含有合法的 HTTP/HTTPS 地址即可。
 
 > 仅用于个人学习与内容整理。请遵守平台规则与著作权法，不要用于批量抓取或二次分发他人作品。
 
@@ -10,7 +12,8 @@
 
 ## 功能特点
 
-- **一条链接搞定**：直接粘贴抖音分享文案（带一堆表情和口令的那种也行），自动识别其中的链接。
+- **一条链接搞定**：直接粘贴分享文案（带一堆表情和口令的那种也行），自动提取其中的第一个 URL。
+- **不挑平台**：抖音、B站、YouTube、微博等主流视频平台原生支持；`v.douyin.com`、`b23.tv`、`youtu.be` 等短链也无需手动展开。
 - **本地转录，音频不出本机**：使用 `faster-whisper` 离线识别，支持 CPU / GPU 自动判断。
 - **AI 深度重构，不是机械摘要**：交给 DeepSeek 消化整篇内容后重写为连贯解读，而不是「观点 / 论据 / 金句」的模板填空。
 - **长视频自动分段**：转录文本超过阈值时，先分段提炼要点，再整体整合成一篇。
@@ -23,13 +26,16 @@
 ## 工作流程
 
 ```text
-抖音分享链接
+视频分享链接（抖音 / B站 / YouTube / 微博 …）
       │
       ▼
-① 提取 v.douyin.com 短链并跟随重定向
+① 从输入文本中提取第一个 HTTP/HTTPS 链接
+   （抖音短链自动跟随重定向，拿到真实 video_id）
       │
       ▼
-② yt-dlp 以最佳音质下载音频 → temp/
+② 抖音：公开解析接口取无水印直链 → requests 流式下载
+   其他平台：yt-dlp 以最佳音质下载
+   → 抖音视频用 ffmpeg 提取音频 → temp/
       │
       ▼
 ③ faster-whisper 离线转录为中文文本
@@ -92,12 +98,12 @@ pip install -r requirements.txt
 
 | 包 | 作用 |
 | --- | --- |
-| `yt-dlp` | 解析抖音链接并下载音频 |
+| `yt-dlp` | 解析多平台视频链接并下载音频 |
 | `faster-whisper` | 本地离线语音转录 |
 | `openai` | 以 OpenAI 兼容协议调用 DeepSeek |
 | `python-dotenv` | 加载 `.env` 配置 |
 | `rich` | 终端进度条与格式化输出 |
-| `requests` | 短链重定向解析 |
+| `requests` | 抖音短链重定向解析 |
 
 > 首次运行会自动下载 Whisper 模型（`base` 模型约 140 MB），之后走本地缓存。
 
@@ -137,7 +143,6 @@ OBSIDIAN_VAULT_PATH=D:/Obsidian/MyVault
 | `WHISPER_LANGUAGE` | `zh` | `auto` 为自动检测语言 |
 | `WHISPER_DOWNLOAD_ROOT` | 空 | 模型缓存目录，空则用 HuggingFace 默认缓存 |
 | `YTDLP_PROXY` | 空 | 如 `http://127.0.0.1:7890` |
-| `YTDLP_COOKIES_FILE` | 空 | 需要登录态时指向导出的 `cookies.txt` |
 | `TEMP_DIR` | `temp` | 临时音频目录，相对路径以项目根目录为基准 |
 | `SUMMARY_MAX_INPUT_CHARS` | `12000` | 转录超过该长度时分段提炼 |
 
@@ -150,7 +155,14 @@ OBSIDIAN_VAULT_PATH=D:/Obsidian/MyVault
 ### 直接传参
 
 ```bash
+# 抖音
 python main.py "https://v.douyin.com/xxxxxxx/"
+
+# B站
+python main.py "https://www.bilibili.com/video/BVxxxxxxxxxx"
+
+# YouTube
+python main.py "https://www.youtube.com/watch?v=xxxxxxxxxxx"
 ```
 
 ### 粘贴完整分享文案
@@ -228,12 +240,12 @@ python main.py
 ## 项目结构
 
 ```text
-douyin2obsidian/
+video2obsidian/
 ├─ main.py                 CLI 入口：参数解析、流程编排、错误展示
 ├─ config.py               读取并校验 .env，产出 Settings
 ├─ core/
 │  ├─ __init__.py          统一异常体系
-│  ├─ downloader.py        链接识别、短链重定向、yt-dlp 音频下载
+│  ├─ downloader.py        链接提取、抖音直链解析、音频下载与提取
 │  ├─ transcriber.py       faster-whisper 封装（设备/精度自动选择）
 │  ├─ summarizer.py        DeepSeek 调用、分段提炼、结果解析与清洗
 │  └─ vault_writer.py      Markdown 模板生成与知识库写入
@@ -250,11 +262,15 @@ douyin2obsidian/
 
 **下载失败，提示需要登录或返回空信息**
 
-抖音部分内容需要登录态。用浏览器导出 `cookies.txt`，在 `.env` 中设置 `YTDLP_COOKIES_FILE` 指向它。
+抖音链接由公开解析接口取直链，不需要登录 Cookie；若接口临时不可用，脚本会依次尝试备用接口，仍失败时请稍后重试。B站会员视频、YouTube 年龄限制视频等需要登录态的内容暂不支持。
 
 **短链解析超时**
 
-多半是网络问题。设置 `YTDLP_PROXY` 后重试；脚本在短链解析失败时会自动把原始链接直接交给 yt-dlp。
+抖音短链解析失败时，脚本会自动把原始链接直接交给解析接口。若是普遍网络问题，设置 `YTDLP_PROXY` 后重试。
+
+**输入里没有可识别的链接**
+
+脚本只提取第一个合法的 `http://` 或 `https://` 地址。请确认分享文案中包含完整链接，而不是只有口令或纯文字。
 
 **ffmpeg 找不到**
 
