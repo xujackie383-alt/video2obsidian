@@ -1,0 +1,34 @@
+{
+  "name": "video2obsidian",
+  "displayName": "视频转 Obsidian 笔记",
+  "version": "0.2.0",
+  "description": "把视频链接转换为 Obsidian 笔记：下载音频、本地离线转写、AI 深度重构并写入知识库。",
+  "license": "MIT",
+  "homepage": "https://github.com/xujackie383-alt/video2obsidian",
+  "entry": "main.py",
+  "command": "python main.py \"{url}\"",
+  "cwd": "project-root",
+  "allowedTools": [
+    "Bash",
+    "Read"
+  ],
+  "triggers": [
+    "转视频为笔记",
+    "把这个视频转成笔记",
+    "视频转 Obsidian",
+    "整理这条视频",
+    "把这条视频做成笔记",
+    "pasted video link (douyin / bilibili / youtube / weibo)"
+  ],
+  "requirements": {
+    "python": ">=3.10",
+    "system": [
+      "ffmpeg"
+    ],
+    "packages": "pip install -r requirements.txt",
+    "env": [
+      "DEEPSEEK_API_KEY",
+      "OBSIDIAN_VAULT_PATH"
+    ]
+  }
+}

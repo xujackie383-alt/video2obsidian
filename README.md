@@ -9,6 +9,7 @@
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB)
 ![License](https://img.shields.io/badge/License-MIT-green)
 ![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)
+![Claude Code Skill](https://img.shields.io/badge/Claude%20Code-Skill-blueviolet)
 
 </div>
 
@@ -16,9 +17,42 @@
 
 ---
 
+## 以 Claude Code Skill 模式运行
+
+本项目已封装为 **Claude Code Agent Skill**（`.claude/skills/video2obsidian/`）。在仓库目录中打开 Claude Code，直接说一句「把这个视频转成笔记」并附上链接，Agent 就会自动执行：
+
+```bash
+python main.py "<视频链接>"
+```
+
+**一句话调用示例**
+
+> 把这个视频转成笔记 https://v.douyin.com/xxxxxxx/
+
+触发词：「转视频为笔记」「把这个视频转成笔记」「视频转 Obsidian」「整理这条视频」；也可以直接粘贴视频链接或 App 分享文案，Agent 会自动识别。完成后会汇报笔记主题与保存路径，无需手动搬运。
+
+**安装到用户级（可选）**：默认仅在项目内生效；若希望任意目录都能调用，把技能目录复制到用户技能目录：
+
+```powershell
+# Windows PowerShell
+New-Item -ItemType Directory -Force "$env:USERPROFILE\.claude\skills" | Out-Null
+Copy-Item -Recurse .claude\skills\video2obsidian "$env:USERPROFILE\.claude\skills\"
+```
+
+```bash
+# macOS / Linux
+mkdir -p ~/.claude/skills
+cp -r .claude/skills/video2obsidian ~/.claude/skills/
+```
+
+> Skill 模式仍然复用同一套 `main.py` 和 `.env` 配置，首次使用前请先完成下方「快速上手」中的环境准备（Python 依赖、FFmpeg、`.env`）。
+
+---
+
 ## 核心特性
 
 - **一键流水线**：粘贴视频链接或整段分享文案，下载 → 转写 → 重构 → 落库 → 清理，一条命令全部完成。
+- **Agent Skill 封装**：自带 Claude Code 技能声明，一句「把这个视频转成笔记」即可自动执行，无需记命令。
 - **本地离线转写**：使用 `faster-whisper` 在本机识别语音，音频文件不上传；支持 CPU / CUDA 自动选择。
 - **AI 深度重构**：交给 DeepSeek 通读全文后重写为连贯解读，而不是「观点 / 论据 / 金句」的模板化摘要；长视频自动分段提炼再整合。
 - **免登录解析**：抖音短链自动跟随重定向拿到真实 `video_id`，通过公开解析接口获取无水印直链，不需要 Cookie 或账号登录。
@@ -275,6 +309,10 @@ Windows 下建议用双引号包裹参数，避免 `&` 等字符被 shell 解释
 
 ```text
 video2obsidian/
+├─ .claude/
+│  └─ skills/video2obsidian/
+│     ├─ SKILL.md          技能声明：触发条件、调用方式与结果汇报
+│     └─ skill.json        技能清单：名称、版本、入口命令、依赖
 ├─ main.py                 CLI 入口：参数解析、流程编排、错误展示
 ├─ config.py               读取并校验 .env，产出 Settings
 ├─ core/
