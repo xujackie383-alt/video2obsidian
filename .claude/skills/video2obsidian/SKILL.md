@@ -31,25 +31,26 @@ allowed-tools: Bash, Read
    - 技能目录向上两级有 `main.py`（项目内安装时为 `.claude/skills/video2obsidian/`）→ 使用该目录；
    - 都没有 → 询问用户 video2obsidian 仓库所在路径。
 2. **提取输入**：从用户消息中取出第一个视频链接；如果用户贴的是整段抖音分享文案，原样保留整段交给脚本（脚本会自行提取链接，并规范化 `modal_id`）。
-3. **执行命令**（进入项目根目录后运行）：
+3. **执行命令（强制后台运行）**：转录是 CPU 密集任务，几分钟到几十分钟不等，**禁止同步阻塞执行**。必须用 Bash 工具的 `run_in_background: true` 启动，并把输出重定向到日志文件：
 
    ```bash
-   python main.py "<链接或整段分享文案>"
-   ```
+   # Windows（进入项目根目录后运行）
+   ".venv/Scripts/python.exe" main.py "<链接或整段分享文案>" > temp/run.log 2>&1
 
-   优先使用项目虚拟环境解释器：
-
-   ```bash
-   # Windows
-   ".venv/Scripts/python.exe" main.py "<链接>"
    # macOS / Linux
-   ".venv/bin/python" main.py "<链接>"
+   ".venv/bin/python" main.py "<链接或整段分享文案>" > temp/run.log 2>&1
    ```
 
-4. **等待完成**：转写耗时取决于视频长度和模型大小。短视频可同步等待（Bash 超时设到 10 分钟）；长视频或 CPU 转写请放到后台运行并把输出重定向到日志，再轮询日志确认进度，不要反复重启任务。
+   优先使用项目虚拟环境解释器；若 `.venv` 不存在，退回系统 `python`。
+
+4. **等待完成**：启动后立即把控制权交还给用户，告知「已开始后台转录，完成后会汇总结果」。通过读取 `temp/run.log` 轮询进度（看 `1/5`～`5/5` 阶段标记），不要重复启动同一个任务，也不要 sleep 轮询。后台任务结束后再读取日志末尾，按下方「结果汇报」处理。
+
+   - 日志出现「笔记已保存」= 成功；
+   - 日志长时间停在 `3/5` 属正常现象（CPU 转录慢），不要中断或重启。
 
 ## 约束
 
+- **转录命令必须后台运行**，禁止用同步 Bash 调用一直阻塞到结束。
 - 必须把链接作为参数传入；不要无参数运行 `main.py`（会进入交互式输入并卡住）。
 - 不要擅自修改核心代码，也不要改动 `.env`。
 - 除非用户明确要求，否则不加 `--keep-audio`。
@@ -68,8 +69,8 @@ allowed-tools: Bash, Read
 
 用户：「把这个视频转成笔记 https://v.douyin.com/xxxxxxx/」
 
-执行：
+执行（Bash 工具设 `run_in_background: true`）：
 
 ```bash
-python main.py "https://v.douyin.com/xxxxxxx/"
+".venv/Scripts/python.exe" main.py "https://v.douyin.com/xxxxxxx/" > temp/run.log 2>&1
 ```
